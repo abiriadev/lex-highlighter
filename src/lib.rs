@@ -1,6 +1,10 @@
-use std::{io::Write, ops::Range};
+use std::{io::Write, ops::Range, str::FromStr};
 
 use owo_colors::{DynColors, OwoColorize};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {}
 
 struct FbColor {
 	fg: Option<DynColors>,
@@ -43,29 +47,20 @@ struct ColoredSpan {
 	color: FbColor,
 }
 
-struct StreamParser<T>(T)
-where T: Iterator<Item = String>;
+impl FromStr for ColoredSpan {
+	type Err = ();
 
-impl<T> Iterator for StreamParser<T>
-where T: Iterator<Item = String>
-{
-	type Item = Result<ColoredSpan, ()>;
-
-	fn next(&mut self) -> Option<Self::Item> {
-		let Some(line) = self.0.next() else {
-			return None;
-		};
-
-		let mut cols = line
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		let mut cols = s
 			.splitn(3, [' ', '\t'])
 			.filter(|s| !s.is_empty());
 
 		let Some(Ok(s1)) = cols.next().map(|s| s.parse::<usize>()) else {
-			return Some(Err(()));
+			return Err(());
 		};
 
 		let Some(Ok(s2)) = cols.next().map(str::parse::<usize>) else {
-			return Some(Err(()));
+			return Err(());
 		};
 
 		// should have at least one color
@@ -86,7 +81,7 @@ where T: Iterator<Item = String>
 
 			// if one is fg, then the other should be bg.
 			if isbg1 == isbg2 {
-				return Some(Err(()));
+				return Err(());
 			}
 
 			// remove `!` if it is bg marker
@@ -98,14 +93,29 @@ where T: Iterator<Item = String>
 			None
 		};
 
-		Some(Ok(ColoredSpan {
+		Ok(ColoredSpan {
 			span: s1..s2,
 			color: if isbg1 {
 				FbColor { fg: c2, bg: c1 }
 			} else {
 				FbColor { fg: c1, bg: c2 }
 			},
-		}))
+		})
+	}
+}
+
+struct StreamParser<T>(T)
+where T: Iterator<Item = String>;
+
+impl<T> Iterator for StreamParser<T>
+where T: Iterator<Item = String>
+{
+	type Item = Result<ColoredSpan, ()>;
+
+	fn next(&mut self) -> Option<Self::Item> {
+		self.0
+			.next()
+			.map(|line| line.parse::<ColoredSpan>())
 	}
 }
 
