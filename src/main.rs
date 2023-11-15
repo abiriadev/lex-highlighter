@@ -20,14 +20,14 @@ fn main() -> anyhow::Result<()> {
 
 	let src = read_to_string(args.src)?;
 
-	let highligher = Highlighter::new(
+	let highlighter = Highlighter::new(
 		&src,
 		stdin().lines().map(|l| l.unwrap()),
 		stdout().lock(),
 		args.tab,
 	);
 
-	highligher.highlight()?;
+	highlighter.highlight()?;
 
 	Ok(())
 }
