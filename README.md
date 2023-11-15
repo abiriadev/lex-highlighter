@@ -24,3 +24,15 @@
 5. You can use foreground and background colors at the same time, but you can't use more than one foreground / background colors.
 6. Styles(_italic_, **bold**, etc) are not supported yet.
 7. Empty lines are not allowed.
+
+## Example
+
+Proof-of-concept example highlighter using [swc](https://github.com/swc-project/swc).
+
+```sh
+$ cargo run --example js-highlighter ./examples/sample.ts | cargo run ./examples/sample.ts
+```
+
+## Result
+
+![](./sample.png)
