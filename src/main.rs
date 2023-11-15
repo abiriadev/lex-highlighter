@@ -1,4 +1,5 @@
 use std::{
+	fmt::Display,
 	fs::read_to_string,
 	io::{stdin, stdout, Write},
 	ops::Range,
@@ -8,9 +9,39 @@ use std::{
 use clap::Parser;
 use owo_colors::{DynColors, OwoColorize};
 
+struct FbColor {
+	fg: Option<DynColors>,
+	bg: Option<DynColors>,
+}
+
+impl FbColor {
+	fn parse_dyncolor(s: &str) -> Result<DynColors, ()> {
+		// currently support only hex colors
+		if !matches!(s.chars().next(), Some('#')) {
+			Err(())?
+		}
+
+		let r = u8::from_str_radix(&s[1..3], 16).map_err(|_| ())?;
+		let g = u8::from_str_radix(&s[3..5], 16).map_err(|_| ())?;
+		let b = u8::from_str_radix(&s[5..7], 16).map_err(|_| ())?;
+
+		Ok(DynColors::Rgb(r, g, b))
+	}
+
+	fn colorize<T>(&self, s: T) -> String
+	where T: Display + OwoColorize {
+		match (self.fg, self.bg) {
+			(None, None) => s.to_string(),
+			(Some(fg), None) => s.color(fg).to_string(),
+			(None, Some(bg)) => s.on_color(bg).to_string(),
+			(Some(fg), Some(bg)) => s.color(fg).on_color(bg).to_string(),
+		}
+	}
+}
+
 struct ColoredSpan {
 	pub span: Range<usize>,
-	pub color: DynColors,
+	pub color: FbColor,
 }
 
 struct StreamParser<T>(T)
@@ -38,15 +69,43 @@ where T: Iterator<Item = String>
 			return Some(Err(()));
 		};
 
-		let c = cols.next().unwrap();
+		// should have at least one color
+		let c1 = cols.next().ok_or(()).unwrap();
 
-		let r = u8::from_str_radix(&c[1..3], 16).unwrap();
-		let g = u8::from_str_radix(&c[3..5], 16).unwrap();
-		let b = u8::from_str_radix(&c[5..7], 16).unwrap();
+		// NOTE: guarantedd to have at least one character due to split-filter
+		let isbg1 = c1.chars().next().unwrap() == '!';
+
+		// remove `!` if it is bg marker
+		let c1 = Some(
+			FbColor::parse_dyncolor(if isbg1 { &c1[1..] } else { c1 }).unwrap(),
+		);
+
+		// second color is optional
+		let c2 = if let Some(c2) = cols.next() {
+			// NOTE: guarantedd to have at least one character due to split-filter
+			let isbg2 = c2.chars().next().unwrap() == '!';
+
+			// if one is fg, then the other should be bg.
+			if isbg1 == isbg2 {
+				return Some(Err(()));
+			}
+
+			// remove `!` if it is bg marker
+			Some(
+				FbColor::parse_dyncolor(if isbg2 { &c2[1..] } else { c2 })
+					.unwrap(),
+			)
+		} else {
+			None
+		};
 
 		Some(Ok(ColoredSpan {
 			span: s1..s2,
-			color: DynColors::Rgb(r, g, b),
+			color: if isbg1 {
+				FbColor { fg: c2, bg: c1 }
+			} else {
+				FbColor { fg: c1, bg: c2 }
+			},
 		}))
 	}
 }
@@ -80,7 +139,7 @@ fn main() {
 		write!(
 			o,
 			"{}",
-			(&src[last..span.end]).color(color)
+			color.colorize(&src[last..span.end])
 		)
 		.unwrap();
 
