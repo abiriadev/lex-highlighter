@@ -77,7 +77,7 @@ impl FromStr for ColoredSpan {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let mut cols = s
-			.splitn(3, [' ', '\t'])
+			.split([' ', '\t'])
 			.filter(|s| !s.is_empty());
 
 		let Some(Ok(s1)) = cols.next().map(|s| s.parse::<usize>()) else {
