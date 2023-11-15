@@ -9,8 +9,18 @@
 
 ```bnf
 <stream> ::= (<span> <newline>)*
-<span> ::= <number> <whitespace>+ <number> (<whitespace>+ <color>)?
-<number> ::= 0 | [1-9] [0-9]* // negative not supported
-<color> ::= "#" <hex> <hex> <hex> <hex> <hex> <hex>
+<span> ::= <number> <ws> <number> <ws> <colorprofile>
+<number> ::= 0 | [1-9] [0-9]*
+<colorprofile> ::= <color> | "!" <color> | <color> <ws> "!" <color> | "!" <color> <ws> <color>
+<color> ::= "#" <hex>{6}
 <hex> ::= [0-9a-fA-F]
+<ws> = (" " | "\t")+
 ```
+
+1. Negative indexing is not supported.
+2. Currently only hex colors are supported.
+3. Hex colors should have exactly 6 digits.
+4. Use `!`(inverse) to represent background color.
+5. You can use foreground and background colors at the same time, but you can't use more than one foreground / background colors.
+6. Styles(_italic_, **bold**, etc) are not supported yet.
+7. Empty lines are not allowed.
