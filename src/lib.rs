@@ -1,4 +1,8 @@
-use std::{io::Write, ops::Range, str::FromStr};
+use std::{
+	io::{self, Write},
+	ops::Range,
+	str::FromStr,
+};
 
 use owo_colors::{DynColors, OwoColorize};
 use thiserror::Error;
@@ -19,6 +23,9 @@ pub enum Error {
 
 	#[error("Failed to parse hex value")]
 	InvalidHex,
+
+	#[error("{0}")]
+	IoError(#[from] io::Error),
 }
 
 struct FbColor {
@@ -164,32 +171,26 @@ where
 		}
 	}
 
-	pub fn highlight(mut self) -> Result<(), ()> {
+	pub fn highlight(mut self) -> Result<(), Error> {
 		let mut cursor = 0;
 
 		for span in self.input {
-			let Ok(ColoredSpan { span, color }) = span else {
-				Err(())?
-			};
+			let ColoredSpan { span, color } = span?;
 
 			self.output
-				.write(&self.source[cursor..span.start].as_bytes())
-				.map_err(|_| ())?;
+				.write(&self.source[cursor..span.start].as_bytes())?;
 
 			cursor = span.end;
 
-			self.output
-				.write(
-					color
-						.line_paint(&self.source[span])
-						.as_bytes(),
-				)
-				.map_err(|_| ())?;
+			self.output.write(
+				color
+					.line_paint(&self.source[span])
+					.as_bytes(),
+			)?;
 		}
 
 		self.output
-			.write(&self.source[cursor..].as_bytes())
-			.map_err(|_| ())?;
+			.write(&self.source[cursor..].as_bytes())?;
 
 		Ok(())
 	}
