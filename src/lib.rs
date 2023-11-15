@@ -64,15 +64,17 @@ impl FromStr for ColoredSpan {
 		};
 
 		// should have at least one color
-		let c1 = cols.next().ok_or(()).unwrap();
+		let c1 = cols.next().ok_or(())?;
 
 		// NOTE: guarantedd to have at least one character due to split-filter
 		let isbg1 = c1.chars().next().unwrap() == '!';
 
 		// remove `!` if it is bg marker
-		let c1 = Some(
-			FbColor::parse_dyncolor(if isbg1 { &c1[1..] } else { c1 }).unwrap(),
-		);
+		let c1 = Some(FbColor::parse_dyncolor(if isbg1 {
+			&c1[1..]
+		} else {
+			c1
+		})?);
 
 		// second color is optional
 		let c2 = if let Some(c2) = cols.next() {
@@ -85,10 +87,11 @@ impl FromStr for ColoredSpan {
 			}
 
 			// remove `!` if it is bg marker
-			Some(
-				FbColor::parse_dyncolor(if isbg2 { &c2[1..] } else { c2 })
-					.unwrap(),
-			)
+			Some(FbColor::parse_dyncolor(if isbg2 {
+				&c2[1..]
+			} else {
+				c2
+			})?)
 		} else {
 			None
 		};
@@ -166,7 +169,7 @@ where
 
 		self.output
 			.write(&self.source[cursor..].as_bytes())
-			.unwrap();
+			.map_err(|_| ())?;
 
 		Ok(())
 	}
