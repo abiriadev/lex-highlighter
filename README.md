@@ -30,6 +30,7 @@
 Proof-of-concept example highlighter using [swc](https://github.com/swc-project/swc).
 
 ```sh
+$ git clone https://github.com/abiriadev/lex-highlighter && cd lex-highlighter
 $ cargo run --example js-highlighter ./examples/sample.ts | cargo run ./examples/sample.ts
 ```
 
