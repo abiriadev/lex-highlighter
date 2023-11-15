@@ -1,5 +1,4 @@
 use std::{
-	fmt::Display,
 	fs::read_to_string,
 	io::{stdin, stdout, Write},
 	ops::Range,
@@ -35,8 +34,7 @@ impl FbColor {
 			.join("\n")
 	}
 
-	fn colorize(&self, s: &str) -> String
-where {
+	fn colorize(&self, s: &str) -> String {
 		match (self.fg, self.bg) {
 			(None, None) => s.to_string(),
 			(Some(fg), None) => s.color(fg).to_string(),
@@ -117,6 +115,59 @@ where T: Iterator<Item = String>
 	}
 }
 
+struct Highlighter<'a, I, O>
+where
+	I: Iterator<Item = String>,
+	O: Write, {
+	source: &'a str,
+	input: StreamParser<I>,
+	output: O,
+}
+
+impl<'a, I, O> Highlighter<'a, I, O>
+where
+	I: Iterator<Item = String>,
+	O: Write,
+{
+	pub fn new(source: &'a str, input: I, output: O) -> Self {
+		Self {
+			source,
+			input: StreamParser(input),
+			output,
+		}
+	}
+
+	pub fn highlight(mut self) -> Result<(), ()> {
+		let mut cursor = 0;
+
+		for span in self.input {
+			let Ok(ColoredSpan { span, color }) = span else {
+				Err(())?
+			};
+
+			self.output
+				.write(&self.source[cursor..span.start].as_bytes())
+				.map_err(|_| ())?;
+
+			cursor = span.end;
+
+			self.output
+				.write(
+					color
+						.line_paint(&self.source[span])
+						.as_bytes(),
+				)
+				.map_err(|_| ())?;
+		}
+
+		self.output
+			.write(&self.source[cursor..].as_bytes())
+			.unwrap();
+
+		Ok(())
+	}
+}
+
 #[derive(Parser)]
 struct Args {
 	src: PathBuf,
@@ -127,29 +178,11 @@ fn main() {
 
 	let src = read_to_string(args.src).unwrap();
 
-	let stdparser = StreamParser(stdin().lines().map(|l| l.unwrap()));
+	let highligher = Highlighter::new(
+		&src,
+		stdin().lines().map(|l| l.unwrap()),
+		stdout().lock(),
+	);
 
-	let mut o = stdout().lock();
-	let mut last = 0;
-
-	for span in stdparser {
-		let Ok(ColoredSpan { span, color }) = span else {
-			println!("BOOOOOMM!@#@#");
-			panic!()
-		};
-
-		write!(o, "{}", &src[last..span.start]).unwrap();
-		last = span.start;
-
-		write!(
-			o,
-			"{}",
-			color.line_paint(&src[last..span.end])
-		)
-		.unwrap();
-
-		last = span.end;
-	}
-
-	write!(o, "{}", &src[last..]).unwrap();
+	highligher.highlight().unwrap();
 }
