@@ -12,10 +12,10 @@ struct Args {
 	src: PathBuf,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
 	let args = Args::parse();
 
-	let src = read_to_string(args.src).unwrap();
+	let src = read_to_string(args.src)?;
 
 	let highligher = Highlighter::new(
 		&src,
@@ -24,4 +24,6 @@ fn main() {
 	);
 
 	highligher.highlight().unwrap();
+
+	Ok(())
 }
