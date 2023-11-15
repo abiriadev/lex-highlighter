@@ -1,5 +1,11 @@
-use std::{io::stdin, ops::Range};
+use std::{
+	fs::read_to_string,
+	io::{stdin, stdout, Write},
+	ops::Range,
+	path::PathBuf,
+};
 
+use clap::Parser;
 use owo_colors::{DynColors, OwoColorize};
 
 struct ColoredSpan {
@@ -45,14 +51,39 @@ where T: Iterator<Item = String>
 	}
 }
 
+#[derive(Parser)]
+struct Args {
+	src: PathBuf,
+}
+
 fn main() {
+	let args = Args::parse();
+
+	let src = read_to_string(args.src).unwrap();
+
 	let stdparser = StreamParser(stdin().lines().map(|l| l.unwrap()));
+
+	let mut o = stdout().lock();
+	let mut last = 0;
 
 	for span in stdparser {
 		let Ok(ColoredSpan { span, color }) = span else {
 			println!("BOOOOOMM!@#@#");
 			panic!()
 		};
-		println!("{:?}", span.color(color));
+
+		// println!("{:?}", span.color(color));
+
+		write!(o, "{}", &src[last..span.start]).unwrap();
+		last = span.start;
+
+		write!(
+			o,
+			"{}",
+			(&src[last..span.end]).color(color)
+		)
+		.unwrap();
+
+		last = span.end;
 	}
 }
