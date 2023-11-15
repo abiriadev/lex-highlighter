@@ -50,16 +50,26 @@ impl FbColor {
 		Ok(DynColors::Rgb(r, g, b))
 	}
 
-	fn line_paint(&self, s: &str) -> String {
+	fn tab_to_space(s: &str, len: Option<usize>) -> String {
+		if let Some(len) = len {
+			let indent = " ".repeat(len);
+
+			s.replace('\t', &indent)
+		} else {
+			s.to_owned()
+		}
+	}
+
+	fn line_paint(&self, s: &str, tab_len: Option<usize>) -> String {
 		s.split('\n')
-			.map(|s| self.colorize(s))
+			.map(|s| self.colorize(Self::tab_to_space(s, tab_len)))
 			.collect::<Vec<_>>()
 			.join("\n")
 	}
 
-	fn colorize(&self, s: &str) -> String {
+	fn colorize(&self, s: String) -> String {
 		match (self.fg, self.bg) {
-			(None, None) => s.to_string(),
+			(None, None) => s,
 			(Some(fg), None) => s.color(fg).to_string(),
 			(None, Some(bg)) => s.on_color(bg).to_string(),
 			(Some(fg), Some(bg)) => s.color(fg).on_color(bg).to_string(),
@@ -156,6 +166,7 @@ where
 	source: &'a str,
 	input: StreamParser<I>,
 	output: O,
+	tab_len: Option<usize>,
 }
 
 impl<'a, I, O> Highlighter<'a, I, O>
@@ -163,11 +174,17 @@ where
 	I: Iterator<Item = String>,
 	O: Write,
 {
-	pub fn new(source: &'a str, input: I, output: O) -> Self {
+	pub fn new(
+		source: &'a str,
+		input: I,
+		output: O,
+		tab_len: Option<usize>,
+	) -> Self {
 		Self {
 			source,
 			input: StreamParser(input),
 			output,
+			tab_len,
 		}
 	}
 
@@ -184,7 +201,7 @@ where
 
 			self.output.write(
 				color
-					.line_paint(&self.source[span])
+					.line_paint(&self.source[span], self.tab_len)
 					.as_bytes(),
 			)?;
 		}

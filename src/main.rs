@@ -10,6 +10,9 @@ use lex_highlighter::Highlighter;
 #[derive(Parser)]
 struct Args {
 	src: PathBuf,
+
+	#[arg(long, short)]
+	tab: Option<usize>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -21,6 +24,7 @@ fn main() -> anyhow::Result<()> {
 		&src,
 		stdin().lines().map(|l| l.unwrap()),
 		stdout().lock(),
+		args.tab,
 	);
 
 	highligher.highlight()?;
