@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
 		stdout().lock(),
 	);
 
-	highligher.highlight().unwrap();
+	highligher.highlight()?;
 
 	Ok(())
 }
