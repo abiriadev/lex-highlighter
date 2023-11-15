@@ -28,8 +28,15 @@ impl FbColor {
 		Ok(DynColors::Rgb(r, g, b))
 	}
 
-	fn colorize<T>(&self, s: T) -> String
-	where T: Display + OwoColorize {
+	fn line_paint(&self, s: &str) -> String {
+		s.split('\n')
+			.map(|s| self.colorize(s))
+			.collect::<Vec<_>>()
+			.join("\n")
+	}
+
+	fn colorize(&self, s: &str) -> String
+where {
 		match (self.fg, self.bg) {
 			(None, None) => s.to_string(),
 			(Some(fg), None) => s.color(fg).to_string(),
@@ -137,7 +144,7 @@ fn main() {
 		write!(
 			o,
 			"{}",
-			color.colorize(&src[last..span.end])
+			color.line_paint(&src[last..span.end])
 		)
 		.unwrap();
 
