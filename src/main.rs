@@ -131,8 +131,6 @@ fn main() {
 			panic!()
 		};
 
-		// println!("{:?}", span.color(color));
-
 		write!(o, "{}", &src[last..span.start]).unwrap();
 		last = span.start;
 
@@ -145,4 +143,6 @@ fn main() {
 
 		last = span.end;
 	}
+
+	write!(o, "{}", &src[last..]).unwrap();
 }
