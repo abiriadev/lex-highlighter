@@ -7,7 +7,7 @@
 
 ## Stream format
 
-```bnf
+```ebnf
 <stream> ::= (<span> <newline>)*
 <span> ::= <number> <ws> <number> <ws> <colorprofile>
 <number> ::= 0 | [1-9] [0-9]*
