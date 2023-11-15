@@ -4,7 +4,22 @@ use owo_colors::{DynColors, OwoColorize};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum Error {}
+pub enum Error {
+	#[error("Failed to parse span stream")]
+	InvalidStreamFormat,
+
+	#[error(
+		"There can't be more than one foreground or background color at the \
+		 same time"
+	)]
+	DuplicatedColorType,
+
+	#[error("Can't recognize color name or value")]
+	UnknownColorType,
+
+	#[error("Failed to parse hex value")]
+	InvalidHex,
+}
 
 struct FbColor {
 	fg: Option<DynColors>,
@@ -12,15 +27,18 @@ struct FbColor {
 }
 
 impl FbColor {
-	fn parse_dyncolor(s: &str) -> Result<DynColors, ()> {
+	fn parse_dyncolor(s: &str) -> Result<DynColors, Error> {
 		// currently support only hex colors
 		if !matches!(s.chars().next(), Some('#')) {
-			Err(())?
+			Err(Error::UnknownColorType)?
 		}
 
-		let r = u8::from_str_radix(&s[1..3], 16).map_err(|_| ())?;
-		let g = u8::from_str_radix(&s[3..5], 16).map_err(|_| ())?;
-		let b = u8::from_str_radix(&s[5..7], 16).map_err(|_| ())?;
+		let r =
+			u8::from_str_radix(&s[1..3], 16).map_err(|_| Error::InvalidHex)?;
+		let g =
+			u8::from_str_radix(&s[3..5], 16).map_err(|_| Error::InvalidHex)?;
+		let b =
+			u8::from_str_radix(&s[5..7], 16).map_err(|_| Error::InvalidHex)?;
 
 		Ok(DynColors::Rgb(r, g, b))
 	}
@@ -48,7 +66,7 @@ struct ColoredSpan {
 }
 
 impl FromStr for ColoredSpan {
-	type Err = ();
+	type Err = Error;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let mut cols = s
@@ -56,15 +74,17 @@ impl FromStr for ColoredSpan {
 			.filter(|s| !s.is_empty());
 
 		let Some(Ok(s1)) = cols.next().map(|s| s.parse::<usize>()) else {
-			return Err(());
+			Err(Error::InvalidStreamFormat)?
 		};
 
 		let Some(Ok(s2)) = cols.next().map(str::parse::<usize>) else {
-			return Err(());
+			Err(Error::InvalidStreamFormat)?
 		};
 
 		// should have at least one color
-		let c1 = cols.next().ok_or(())?;
+		let c1 = cols
+			.next()
+			.ok_or(Error::InvalidStreamFormat)?;
 
 		// NOTE: guarantedd to have at least one character due to split-filter
 		let isbg1 = c1.chars().next().unwrap() == '!';
@@ -83,7 +103,7 @@ impl FromStr for ColoredSpan {
 
 			// if one is fg, then the other should be bg.
 			if isbg1 == isbg2 {
-				return Err(());
+				Err(Error::DuplicatedColorType)?
 			}
 
 			// remove `!` if it is bg marker
@@ -113,7 +133,7 @@ where T: Iterator<Item = String>;
 impl<T> Iterator for StreamParser<T>
 where T: Iterator<Item = String>
 {
-	type Item = Result<ColoredSpan, ()>;
+	type Item = Result<ColoredSpan, Error>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		self.0
